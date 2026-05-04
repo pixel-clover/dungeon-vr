@@ -11,6 +11,7 @@ import { Settings } from './settings.js';
 import { populateDungeon, disposeProps } from './props.js';
 import { Explosion, applyExplosionDamage } from './effects.js';
 import { preloadEnemyModels } from './models.js';
+import { getTheme } from './themes.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -27,10 +28,24 @@ scene.fog = new THREE.Fog(0x141218, 14, 45);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.05, 200);
 
-scene.add(new THREE.HemisphereLight(0xffd9a0, 0x202028, 0.55));
+const hemiLight = new THREE.HemisphereLight(0xffd9a0, 0x202028, 0.55);
+scene.add(hemiLight);
 const playerLight = new THREE.PointLight(0xffd9a0, 5.5, 22, 1);
 playerLight.position.set(0, 1.8, 0);
 scene.add(playerLight);
+
+function applySceneTheme(theme) {
+    scene.background.setHex(theme.bgColor);
+    scene.fog.color.setHex(theme.fogColor);
+    scene.fog.near = theme.fogNear;
+    scene.fog.far = theme.fogFar;
+    hemiLight.color.setHex(theme.ambientSky);
+    hemiLight.groundColor.setHex(theme.ambientGround);
+    hemiLight.intensity = theme.ambientIntensity;
+    playerLight.color.setHex(theme.playerLightColor);
+    playerLight.intensity = theme.playerLightIntensity;
+    playerLight.distance = theme.playerLightDistance;
+}
 
 const audio = new AudioSystem(camera);
 
@@ -177,11 +192,14 @@ function startNewRun() {
         state.props = [];
     }
 
-    dungeon.generate({ width: 32, height: 32, roomCount: 10 });
+    const theme = getTheme(settings.values.theme);
+    applySceneTheme(theme);
+
+    dungeon.generate({ width: 32, height: 32, roomCount: 10, theme });
     const spawn = dungeon.spawnPoint();
     player.spawn(spawn);
 
-    state.props = populateDungeon(scene, dungeon);
+    state.props = populateDungeon(scene, dungeon, Math.random, { theme });
     state.enemies = spawnEnemiesInDungeon(scene, dungeon, audio);
     state.totalEnemies = state.enemies.length;
     state.kills = 0;
@@ -273,9 +291,11 @@ setOverlay({
 await preloadEnemyModels();
 state.modelsReady = true;
 
-dungeon.generate({ width: 32, height: 32, roomCount: 10 });
+const initialTheme = getTheme(settings.values.theme);
+applySceneTheme(initialTheme);
+dungeon.generate({ width: 32, height: 32, roomCount: 10, theme: initialTheme });
 player.spawn(dungeon.spawnPoint());
-state.props = populateDungeon(scene, dungeon);
+state.props = populateDungeon(scene, dungeon, Math.random, { theme: initialTheme });
 dungeon.updateFog(player.rig.position.x, player.rig.position.z, 6);
 showTitleMenu();
 updateHud();

@@ -135,7 +135,9 @@ export class Dungeon {
         minRoom = 4,
         maxRoom = 8,
         rng = Math.random,
+        theme = null,
     } = {}) {
+        this.theme = theme;
         this.W = width;
         this.H = height;
         this.grid = new Uint8Array(width * height).fill(1);
@@ -356,17 +358,22 @@ export class Dungeon {
 
         const wallSet = getWallPBRSet();
         const floorSet = getFloorPBRSet();
+        const theme = this.theme;
+        const wallTint = theme?.wallTint ?? 0xffffff;
+        const floorTint = theme?.floorTint ?? 0xffffff;
+        const ceilTint = theme?.ceilTint ?? 0x6a6055;
 
         const tileGeo = new THREE.BoxGeometry(CELL, 0.2, CELL);
         const floorMat = makeWorldUVMaterial({
             ...floorSet,
+            color: floorTint,
             roughness: 1.0,
             tileSize: 2.5,
             normalScale: 1.0,
         });
         const ceilMat = makeWorldUVMaterial({
             ...wallSet,
-            color: 0x6a6055,
+            color: ceilTint,
             roughness: 1.0,
             tileSize: 2.5,
             normalScale: 0.6,
@@ -378,6 +385,7 @@ export class Dungeon {
         const wallGeo = new THREE.BoxGeometry(CELL, WALL_H, CELL);
         const wallMat = makeWorldUVMaterial({
             ...wallSet,
+            color: wallTint,
             roughness: 1.0,
             tileSize: 2.5,
             normalScale: 1.2,

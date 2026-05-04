@@ -27,8 +27,13 @@ const CRATE_GEO = new THREE.BoxGeometry(0.7, 0.6, 0.7);
 const CRATE_PLANK_MAT = new THREE.MeshStandardMaterial({ color: 0x6a4828, roughness: 0.85 });
 
 export class Torch {
-    constructor() {
+    constructor(theme = null) {
         this.group = new THREE.Group();
+
+        const torchColor = theme?.torchColor ?? 0xffaa55;
+        const torchIntensity = theme?.torchIntensity ?? 4.5;
+        const flameColor = theme?.torchFlameColor ?? 0xffaa55;
+        const glowColor = theme?.torchGlowColor ?? 0xff6020;
 
         const sconce = new THREE.Mesh(SCONCE_GEO, WOOD_DARK_MAT);
         sconce.position.set(0, 0, -0.04);
@@ -37,23 +42,27 @@ export class Torch {
         stick.rotation.x = Math.PI / 8;
         stick.position.set(0, 0.18, -0.12);
 
-        const flame = new THREE.Mesh(FLAME_GEO, FLAME_MAT.clone());
+        const flameMat = FLAME_MAT.clone();
+        flameMat.color.setHex(flameColor);
+        const flame = new THREE.Mesh(FLAME_GEO, flameMat);
         flame.position.set(0, 0.36, -0.18);
 
+        const glowMat = FLAME_GLOW_MAT.clone();
+        glowMat.color.setHex(glowColor);
         const glow = new THREE.Mesh(
             new THREE.SphereGeometry(0.16, 12, 12),
-            FLAME_GLOW_MAT.clone(),
+            glowMat,
         );
         glow.position.copy(flame.position);
 
-        this.light = new THREE.PointLight(0xffaa55, 4.5, 9, 1.4);
+        this.light = new THREE.PointLight(torchColor, torchIntensity, 9, 1.4);
         this.light.position.set(0, 0.42, -0.22);
 
         this.group.add(sconce, stick, flame, glow, this.light);
 
         this.flame = flame;
         this.glow = glow;
-        this.baseIntensity = 4.5;
+        this.baseIntensity = torchIntensity;
         this.t = Math.random() * 100;
     }
 
@@ -143,6 +152,7 @@ function findRoomEdgeWalls(dungeon, room) {
 export function populateDungeon(scene, dungeon, rng = Math.random, opts = {}) {
     const props = [];
     const maxTorches = opts.maxTorches ?? 8;
+    const theme = opts.theme ?? null;
     let torchBudget = maxTorches;
 
     const rooms = dungeon.rooms.slice().sort(() => rng() - 0.5);
@@ -150,7 +160,7 @@ export function populateDungeon(scene, dungeon, rng = Math.random, opts = {}) {
         const walls = findRoomEdgeWalls(dungeon, room);
         if (walls.length > 0 && torchBudget > 0 && rng() < 0.85) {
             const pick = walls[Math.floor(rng() * walls.length)];
-            const torch = new Torch();
+            const torch = new Torch(theme);
             const cellWorld = dungeon.cellToWorld(pick.gx, pick.gz);
             const wallOffset = (CELL / 2) - 0.08;
             torch.group.position.set(

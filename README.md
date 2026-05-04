@@ -24,7 +24,7 @@ Open https://pixel-clover.github.io/dungeon-vr/ in:
 | Shoot               | Trigger (right hand)         | Left mouse button |
 | Restart after a run | Trigger                      | `R`               |
 
-The minimap is on your **left wrist** in VR and the top-right of the screen on desktop.
+The minimap is on your left wrist in VR and the top-right of the screen on desktop.
 
 ### Run Locally
 

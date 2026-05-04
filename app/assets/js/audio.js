@@ -17,11 +17,28 @@ export class AudioSystem {
     }
 
     _build() {
-        this.buffers.shoot = this._synth(0.16, (t, sr) => {
-            const env = Math.exp(-t * 22);
-            const noise = Math.random() * 2 - 1;
-            const tone = Math.sin(2 * Math.PI * 90 * t) * 0.4;
-            return (noise * 0.7 + tone) * env;
+        this.buffers.shoot = this._synth(0.22, (t) => {
+            const envFast = Math.exp(-t * 38);
+            const envBody = Math.exp(-t * 14);
+            const envTail = Math.exp(-t * 5);
+            const click = (Math.random() * 2 - 1) * envFast * 0.95;
+            const bodyFreq = Math.max(45, 130 - t * 240);
+            const body = Math.sin(2 * Math.PI * bodyFreq * t) * envBody * 0.85;
+            const sub = Math.sin(2 * Math.PI * 55 * t) * envTail * 0.45;
+            const crack = (Math.random() * 2 - 1) * envBody * 0.55;
+            return click * 0.45 + body * 0.7 + crack * 0.4 + sub * 0.3;
+        });
+
+        this.buffers.explosion = this._synth(0.85, (t) => {
+            const envBoom = Math.exp(-t * 4.5);
+            const envCrackle = Math.exp(-t * 8);
+            const envSub = Math.exp(-t * 2.5);
+            const boomFreq = Math.max(28, 70 - t * 60);
+            const boom = Math.sin(2 * Math.PI * boomFreq * t) * envBoom * 0.95;
+            const sub = Math.sin(2 * Math.PI * 32 * t) * envSub * 0.6;
+            const crackle = (Math.random() * 2 - 1) * envCrackle * 0.75;
+            const rumble = (Math.random() * 2 - 1) * envSub * 0.35;
+            return boom * 0.55 + sub * 0.35 + crackle * 0.45 + rumble * 0.25;
         });
 
         this.buffers.hit = this._synth(0.18, (t) => {
@@ -84,6 +101,9 @@ export class AudioSystem {
         const gain = this.ctx.createGain();
         gain.gain.value = volume;
         src.connect(gain).connect(this.masterGain);
+        src.onended = () => {
+            try { src.disconnect(); gain.disconnect(); } catch {}
+        };
         src.start();
     }
 
@@ -111,6 +131,9 @@ export class AudioSystem {
         const gain = this.ctx.createGain();
         gain.gain.value = volume;
         src.connect(panner).connect(gain).connect(this.masterGain);
+        src.onended = () => {
+            try { src.disconnect(); panner.disconnect(); gain.disconnect(); } catch {}
+        };
         src.start();
     }
 }

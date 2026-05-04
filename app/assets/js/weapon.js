@@ -16,10 +16,6 @@ export class Weapon {
         this.lastFireTime = -999;
         this.tracers = [];
 
-        this.gunMesh = this._buildGunMesh();
-        this.gunMesh.visible = false;
-        scene.add(this.gunMesh);
-
         this.muzzleLight = new THREE.PointLight(0xffaa55, 0, 4, 2);
         scene.add(this.muzzleLight);
         this.muzzleFlashUntil = 0;
@@ -55,23 +51,92 @@ export class Weapon {
 
     _buildGunMesh() {
         const g = new THREE.Group();
-        const body = new THREE.Mesh(
-            new THREE.BoxGeometry(0.05, 0.07, 0.22),
-            new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5, metalness: 0.6 }),
-        );
-        body.position.z = -0.08;
+
+        const matFrame = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.45, metalness: 0.7 });
+        const matSlide = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.3, metalness: 0.85 });
+        const matBarrel = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.3, metalness: 0.95 });
+        const matGrip = new THREE.MeshStandardMaterial({ color: 0x2a1810, roughness: 0.9 });
+        const matSight = new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.6 });
+        const matDot = new THREE.MeshBasicMaterial({ color: 0xff2a2a });
+
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.045, 0.18), matFrame);
+        frame.position.set(0, -0.005, -0.07);
+
+        const slide = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.20), matSlide);
+        slide.position.set(0, 0.03, -0.075);
+
+        const slideCut1 = new THREE.Mesh(new THREE.BoxGeometry(0.041, 0.018, 0.008), matFrame);
+        slideCut1.position.set(0, 0.03, -0.005);
+        const slideCut2 = slideCut1.clone();
+        slideCut2.position.z = -0.018;
+        const slideCut3 = slideCut1.clone();
+        slideCut3.position.z = -0.031;
+
         const barrel = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.012, 0.012, 0.16, 8),
-            new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.8 }),
+            new THREE.CylinderGeometry(0.011, 0.011, 0.05, 14),
+            matBarrel,
         );
         barrel.rotation.x = Math.PI / 2;
-        barrel.position.set(0, 0.02, -0.18);
-        const grip = new THREE.Mesh(
-            new THREE.BoxGeometry(0.04, 0.09, 0.05),
-            new THREE.MeshStandardMaterial({ color: 0x331810, roughness: 0.9 }),
+        barrel.position.set(0, 0.025, -0.20);
+
+        const muzzle = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.014, 0.014, 0.012, 14),
+            matBarrel,
         );
-        grip.position.set(0, -0.06, -0.04);
-        g.add(body, barrel, grip);
+        muzzle.rotation.x = Math.PI / 2;
+        muzzle.position.set(0, 0.025, -0.235);
+
+        const guard = new THREE.Mesh(
+            new THREE.TorusGeometry(0.022, 0.005, 6, 14, Math.PI),
+            matFrame,
+        );
+        guard.rotation.set(Math.PI / 2, 0, 0);
+        guard.position.set(0, -0.04, -0.05);
+
+        const trigger = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.022, 0.01), matFrame);
+        trigger.position.set(0, -0.035, -0.05);
+
+        const grip = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.105, 0.055), matGrip);
+        grip.position.set(0, -0.085, -0.025);
+        grip.rotation.x = -0.18;
+
+        for (let i = 0; i < 5; i++) {
+            const ridge = new THREE.Mesh(
+                new THREE.BoxGeometry(0.044, 0.005, 0.003),
+                matSight,
+            );
+            ridge.position.set(0, -0.04 - i * 0.018, 0.005);
+            ridge.rotation.x = -0.18;
+            g.add(ridge);
+        }
+
+        const hammer = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.022, 0.008), matFrame);
+        hammer.position.set(0, 0.052, 0.012);
+        hammer.rotation.x = -0.3;
+
+        const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.008, 0.005), matSight);
+        frontSight.position.set(0, 0.055, -0.16);
+
+        const rearSight = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.006, 0.005), matSight);
+        rearSight.position.set(0, 0.055, -0.005);
+
+        const leftRear = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.008, 0.005), matSight);
+        leftRear.position.set(-0.0065, 0.055, -0.005);
+        const rightRear = leftRear.clone();
+        rightRear.position.x = 0.0065;
+
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.0035, 8, 8), matDot);
+        dot.position.set(0, 0.052, 0.018);
+
+        const magBase = new THREE.Mesh(new THREE.BoxGeometry(0.044, 0.012, 0.052), matFrame);
+        magBase.position.set(0, -0.135, -0.018);
+        magBase.rotation.x = -0.18;
+
+        g.add(
+            frame, slide, slideCut1, slideCut2, slideCut3,
+            barrel, muzzle, guard, trigger, grip, hammer,
+            frontSight, rearSight, leftRear, rightRear, dot, magBase,
+        );
         return g;
     }
 

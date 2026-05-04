@@ -5,6 +5,11 @@
     <meta content="width=device-width, initial-scale=1.0, user-scalable=no" name="viewport">
     <title>Dungeon VR</title>
     <link href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" rel="icon">
+
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
     <link href="assets/css/styles.css" rel="stylesheet">
 
     <script type="importmap">
@@ -17,12 +22,25 @@
     </script>
 </head>
 <body>
+    <div id="damage-vignette"></div>
+    <div id="low-hp-vignette"></div>
+
     <div id="hud">
-        <div id="hud-stats">
-            <span id="hp">HP: 100</span>
-            <span id="kills">Kills: 0 / 0</span>
+        <div id="hud-top-left">
+            <div class="hud-stat">
+                <div class="hud-label">HEALTH</div>
+                <div class="bar"><div class="bar-fill bar-hp" id="hp-fill"></div></div>
+                <div class="hud-value" id="hp-value">100</div>
+            </div>
+            <div class="hud-stat">
+                <div class="hud-label">KILLS</div>
+                <div class="bar"><div class="bar-fill bar-kills" id="kills-fill"></div></div>
+                <div class="hud-value" id="kills-value">0 / 0</div>
+            </div>
         </div>
-        <div id="hud-crosshair">+</div>
+        <div id="hud-crosshair">
+            <span class="crosshair-mark"></span>
+        </div>
         <div id="minimap-container"></div>
     </div>
 
@@ -33,6 +51,60 @@
             <div id="overlay-buttons"></div>
             <p class="hint">Desktop: click canvas to lock mouse, WASD to move, mouse to aim, click to shoot, R to restart.</p>
             <p class="hint">VR: left stick to move, right stick to snap-turn, trigger to shoot.</p>
+        </div>
+    </div>
+
+    <div id="settings-overlay" class="hidden">
+        <div id="settings-card">
+            <h2>Settings</h2>
+            <div class="settings-row">
+                <label for="setting-volume">Master Volume</label>
+                <input id="setting-volume" type="range" min="0" max="100" value="60">
+                <span class="setting-value" id="setting-volume-value">60%</span>
+            </div>
+            <div class="settings-row">
+                <label for="setting-turn-mode">Turn Mode</label>
+                <select id="setting-turn-mode">
+                    <option value="snap">Snap (Comfort)</option>
+                    <option value="smooth">Smooth</option>
+                </select>
+            </div>
+            <div class="settings-row">
+                <label for="setting-snap-angle">Snap Turn Angle</label>
+                <select id="setting-snap-angle">
+                    <option value="15">15°</option>
+                    <option value="30" selected>30°</option>
+                    <option value="45">45°</option>
+                </select>
+            </div>
+            <div class="settings-row">
+                <label for="setting-mouse-sens">Mouse Sensitivity</label>
+                <input id="setting-mouse-sens" type="range" min="5" max="40" value="22">
+                <span class="setting-value" id="setting-mouse-sens-value">2.2x</span>
+            </div>
+            <div class="settings-row">
+                <label for="setting-move-speed">Move Speed</label>
+                <input id="setting-move-speed" type="range" min="15" max="50" value="35">
+                <span class="setting-value" id="setting-move-speed-value">3.5 m/s</span>
+            </div>
+            <div class="settings-row">
+                <label for="setting-move-smoothing">Move Smoothing</label>
+                <input id="setting-move-smoothing" type="range" min="0" max="40" value="22">
+                <span class="setting-value" id="setting-move-smoothing-value">220 ms</span>
+            </div>
+            <div class="settings-row settings-row-toggle">
+                <label for="setting-invert-vr-forward">Invert VR Forward</label>
+                <input id="setting-invert-vr-forward" type="checkbox">
+                <span class="setting-value setting-hint">If stick up moves you backward</span>
+            </div>
+            <div class="settings-row settings-row-toggle">
+                <label for="setting-comfort-vignette">Comfort Vignette (VR)</label>
+                <input id="setting-comfort-vignette" type="checkbox" checked>
+                <span class="setting-value setting-hint">Reduces motion sickness</span>
+            </div>
+            <div id="settings-footer">
+                <button class="btn-themed btn-secondary" id="settings-close">Close</button>
+            </div>
         </div>
     </div>
 

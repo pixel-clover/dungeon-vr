@@ -26,8 +26,8 @@ export function makeFloorTexture(size = 256) {
     const cellW = size / cells;
     for (let y = 0; y < cells; y++) {
         for (let x = 0; x < cells; x++) {
-            const ox = x * cellW + (r() - 0.5) * 4;
-            const oy = y * cellW + (r() - 0.5) * 4;
+            const ox = x * cellW;
+            const oy = y * cellW;
             const w = cellW - 2;
             const h = cellW - 2;
             const shade = 110 + (r() * 40) | 0;
@@ -110,4 +110,48 @@ function canvasToRepeatTexture(canvas) {
     tex.anisotropy = 4;
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
+}
+
+const _loader = new THREE.TextureLoader();
+
+function configureColor(t) {
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = 8;
+    return t;
+}
+
+function configureLinear(t) {
+    t.colorSpace = THREE.NoColorSpace;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = 8;
+    return t;
+}
+
+let _wallSet = null;
+let _floorSet = null;
+
+export function getWallPBRSet() {
+    if (!_wallSet) {
+        const ao = configureLinear(_loader.load('assets/textures/walls/ao.jpg'));
+        ao.channel = 0;
+        _wallSet = {
+            map: configureColor(_loader.load('assets/textures/walls/diff.jpg')),
+            normalMap: configureLinear(_loader.load('assets/textures/walls/nor_gl.jpg')),
+            roughnessMap: configureLinear(_loader.load('assets/textures/walls/rough.jpg')),
+            aoMap: ao,
+        };
+    }
+    return _wallSet;
+}
+
+export function getFloorPBRSet() {
+    if (!_floorSet) {
+        _floorSet = {
+            map: configureColor(_loader.load('assets/textures/floor/diff.jpg')),
+            normalMap: configureLinear(_loader.load('assets/textures/floor/nor_gl.jpg')),
+            roughnessMap: configureLinear(_loader.load('assets/textures/floor/rough.jpg')),
+        };
+    }
+    return _floorSet;
 }

@@ -1,18 +1,121 @@
 import * as THREE from 'three';
-import { makeFloorTexture, makeWallTexture, makeCeilingTexture } from './textures.js';
+import { getWallPBRSet, getFloorPBRSet } from './textures.js';
 
 export const CELL = 2;
 export const WALL_H = 3;
 
-let _floorTex = null;
-let _wallTex = null;
-let _ceilTex = null;
+function makeWorldUVMaterial({
+    map,
+    normalMap = null,
+    roughnessMap = null,
+    aoMap = null,
+    color = 0xffffff,
+    roughness = 1.0,
+    tileSize = 2,
+    normalScale = 1.0,
+}) {
+    const opts = { map, color, roughness };
+    if (normalMap) opts.normalMap = normalMap;
+    if (roughnessMap) opts.roughnessMap = roughnessMap;
+    if (aoMap) {
+        opts.aoMap = aoMap;
+        opts.aoMapIntensity = 1.0;
+    }
+    const mat = new THREE.MeshStandardMaterial(opts);
 
-function sharedTextures() {
-    if (!_floorTex) _floorTex = makeFloorTexture();
-    if (!_wallTex) _wallTex = makeWallTexture();
-    if (!_ceilTex) _ceilTex = makeCeilingTexture();
-    return { floor: _floorTex, wall: _wallTex, ceil: _ceilTex };
+    mat.onBeforeCompile = (shader) => {
+        shader.uniforms.uTileSize = { value: tileSize };
+        shader.uniforms.uNormalScale = { value: normalScale };
+
+        shader.vertexShader = shader.vertexShader
+            .replace(
+                '#include <common>',
+                `#include <common>
+varying vec3 vWorldPos;
+varying vec3 vObjectNormal;`,
+            )
+            .replace(
+                '#include <begin_vertex>',
+                `#include <begin_vertex>
+vObjectNormal = normal;
+vec4 _wp = vec4(transformed, 1.0);
+#ifdef USE_INSTANCING
+_wp = instanceMatrix * _wp;
+#endif
+_wp = modelMatrix * _wp;
+vWorldPos = _wp.xyz;`,
+            );
+
+        shader.fragmentShader = shader.fragmentShader
+            .replace(
+                '#include <common>',
+                `#include <common>
+varying vec3 vWorldPos;
+varying vec3 vObjectNormal;
+uniform float uTileSize;
+uniform float uNormalScale;`,
+            )
+            .replace(
+                '#include <map_fragment>',
+                `vec3 _absN = abs(vObjectNormal);
+vec3 _w = _absN / max(_absN.x + _absN.y + _absN.z, 0.0001);
+vec2 _uvY = vWorldPos.xz / uTileSize;
+vec2 _uvX = vWorldPos.zy / uTileSize;
+vec2 _uvZ = vWorldPos.xy / uTileSize;
+#ifdef USE_MAP
+vec4 _sampX = texture2D(map, _uvX);
+vec4 _sampY = texture2D(map, _uvY);
+vec4 _sampZ = texture2D(map, _uvZ);
+vec4 sampledDiffuseColor = _sampX * _w.x + _sampY * _w.y + _sampZ * _w.z;
+diffuseColor *= sampledDiffuseColor;
+#endif`,
+            )
+            .replace(
+                '#include <roughnessmap_fragment>',
+                `float roughnessFactor = roughness;
+#ifdef USE_ROUGHNESSMAP
+float _rX = texture2D(roughnessMap, _uvX).g;
+float _rY = texture2D(roughnessMap, _uvY).g;
+float _rZ = texture2D(roughnessMap, _uvZ).g;
+roughnessFactor *= (_rX * _w.x + _rY * _w.y + _rZ * _w.z);
+#endif`,
+            )
+            .replace(
+                '#include <normal_fragment_maps>',
+                `#ifdef USE_NORMALMAP
+vec3 _nmX = texture2D(normalMap, _uvX).xyz * 2.0 - 1.0;
+vec3 _nmY = texture2D(normalMap, _uvY).xyz * 2.0 - 1.0;
+vec3 _nmZ = texture2D(normalMap, _uvZ).xyz * 2.0 - 1.0;
+_nmX.xy *= uNormalScale;
+_nmY.xy *= uNormalScale;
+_nmZ.xy *= uNormalScale;
+vec3 _wnX = vec3(_nmX.z, _nmX.y, _nmX.x);
+vec3 _wnY = vec3(_nmY.x, _nmY.z, _nmY.y);
+vec3 _wnZ = vec3(_nmZ.x, _nmZ.y, _nmZ.z);
+_wnX.x *= sign(vObjectNormal.x + 0.0001);
+_wnY.y *= sign(vObjectNormal.y + 0.0001);
+_wnZ.z *= sign(vObjectNormal.z + 0.0001);
+vec3 _wnPert = normalize(_wnX * _w.x + _wnY * _w.y + _wnZ * _w.z);
+normal = normalize((viewMatrix * vec4(_wnPert, 0.0)).xyz);
+#endif`,
+            )
+            .replace(
+                '#include <aomap_fragment>',
+                `#ifdef USE_AOMAP
+float _aoX = texture2D(aoMap, _uvX).r;
+float _aoY = texture2D(aoMap, _uvY).r;
+float _aoZ = texture2D(aoMap, _uvZ).r;
+float _ao = _aoX * _w.x + _aoY * _w.y + _aoZ * _w.z;
+float ambientOcclusion = (_ao - 1.0) * aoMapIntensity + 1.0;
+reflectedLight.indirectDiffuse *= ambientOcclusion;
+#if defined( USE_ENVMAP ) && defined( STANDARD )
+float specularOcclusion = computeSpecularOcclusion( dotNL, ambientOcclusion, material.roughness );
+reflectedLight.indirectAmbient *= specularOcclusion;
+#endif
+#endif`,
+            );
+    };
+    return mat;
 }
 
 export class Dungeon {
@@ -251,27 +354,33 @@ export class Dungeon {
             }
         }
 
-        const tex = sharedTextures();
+        const wallSet = getWallPBRSet();
+        const floorSet = getFloorPBRSet();
+
         const tileGeo = new THREE.BoxGeometry(CELL, 0.2, CELL);
-        const floorMat = new THREE.MeshStandardMaterial({
-            map: tex.floor,
-            roughness: 0.9,
-            color: 0xffffff,
+        const floorMat = makeWorldUVMaterial({
+            ...floorSet,
+            roughness: 1.0,
+            tileSize: 2.5,
+            normalScale: 1.0,
         });
-        const ceilMat = new THREE.MeshStandardMaterial({
-            map: tex.ceil,
-            roughness: 1,
-            color: 0x999999,
+        const ceilMat = makeWorldUVMaterial({
+            ...wallSet,
+            color: 0x6a6055,
+            roughness: 1.0,
+            tileSize: 2.5,
+            normalScale: 0.6,
         });
         const floor = new THREE.InstancedMesh(tileGeo, floorMat, floorCount);
         const ceil = new THREE.InstancedMesh(tileGeo, ceilMat, floorCount);
         floor.receiveShadow = true;
 
         const wallGeo = new THREE.BoxGeometry(CELL, WALL_H, CELL);
-        const wallMat = new THREE.MeshStandardMaterial({
-            map: tex.wall,
-            roughness: 0.85,
-            color: 0xffffff,
+        const wallMat = makeWorldUVMaterial({
+            ...wallSet,
+            roughness: 1.0,
+            tileSize: 2.5,
+            normalScale: 1.2,
         });
         const walls = new THREE.InstancedMesh(wallGeo, wallMat, wallCount);
         walls.castShadow = true;

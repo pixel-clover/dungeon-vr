@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { spawnEnemyModel } from './models.js';
 
 const ENEMY_HP = 100;
 const ENEMY_SPEED = 1.7;
@@ -9,46 +10,58 @@ const CONTACT_RANGE = 1.0;
 const SIGHT_RANGE = 22;
 const REPATH_INTERVAL = 0.45;
 const WAYPOINT_REACHED = 0.35;
+const FADE = 0.18;
 
 export class Enemy {
-    constructor(scene, position, audio = null) {
+    constructor(scene, position, audio = null, rng = Math.random) {
         this.scene = scene;
         this.audio = audio;
         this.alive = true;
         this.hp = ENEMY_HP;
         this.lastAttackTime = -999;
         this.spotted = false;
+        this._flashId = 0;
 
         this.path = null;
         this.pathIdx = 0;
-        this.nextRepathTime = Math.random() * REPATH_INTERVAL;
+        this.nextRepathTime = rng() * REPATH_INTERVAL;
 
-        const body = new THREE.Mesh(
-            new THREE.CapsuleGeometry(ENEMY_RADIUS, ENEMY_HEIGHT - 2 * ENEMY_RADIUS, 4, 8),
-            new THREE.MeshStandardMaterial({ color: 0x9a3030, roughness: 0.8 }),
-        );
-        body.position.y = ENEMY_HEIGHT / 2;
-        body.castShadow = true;
+        const spawned = spawnEnemyModel(rng);
+        this.modelName = spawned.name;
+        this.model = spawned.object;
+        this.mixer = spawned.mixer;
+        this.actions = spawned.actions;
 
-        const eye = new THREE.Mesh(
-            new THREE.SphereGeometry(0.08, 8, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0xffe040,
-                emissive: 0xffaa00,
-                emissiveIntensity: 1.5,
-            }),
-        );
-        eye.position.set(0, ENEMY_HEIGHT * 0.78, ENEMY_RADIUS * 0.95);
+        this._meshes = [];
+        this.model.traverse((o) => {
+            if (o.isMesh || o.isSkinnedMesh) {
+                this._meshes.push(o);
+                o.castShadow = true;
+            }
+        });
+        this._origColors = this._meshes.map((m) => m.material.color?.getHex() ?? 0xffffff);
 
         this.group = new THREE.Group();
         this.group.position.copy(position);
-        this.group.add(body, eye);
+        this.group.add(this.model);
         scene.add(this.group);
 
-        this.body = body;
+        this._activeAction = null;
+        this._setAction('idle', 0);
+    }
+
+    _setAction(name, fade = FADE) {
+        const next = this.actions[name];
+        if (!next || next === this._activeAction) return;
+        if (this._activeAction) {
+            this._activeAction.fadeOut(fade);
+        }
+        next.reset().fadeIn(fade).play();
+        this._activeAction = next;
     }
 
     update(dt, player, dungeon, now) {
+        this.mixer.update(dt);
         if (!this.alive) return;
 
         const ep = this.group.position;
@@ -57,7 +70,10 @@ export class Enemy {
         const dzAll = pp.z - ep.z;
         const distAll = Math.hypot(dxAll, dzAll);
 
-        if (distAll > SIGHT_RANGE) return;
+        if (distAll > SIGHT_RANGE) {
+            this._setAction('idle');
+            return;
+        }
 
         const hasLOS = dungeon.hasLOS(ep.x, ep.z, pp.x, pp.z);
         if (hasLOS && !this.spotted) {
@@ -72,6 +88,7 @@ export class Enemy {
                 this.lastAttackTime = now;
             }
             this.group.rotation.y = Math.atan2(dxAll, dzAll);
+            this._setAction('attack');
             return;
         }
 
@@ -106,16 +123,21 @@ export class Enemy {
         const dx = tgtX - ep.x;
         const dz = tgtZ - ep.z;
         const d = Math.hypot(dx, dz);
+        let moved = false;
         if (d > 1e-3) {
             const ux = dx / d;
             const uz = dz / d;
             const step = ENEMY_SPEED * dt;
             const nx = ep.x + ux * step;
             const nz = ep.z + uz * step;
+            const beforeX = ep.x;
+            const beforeZ = ep.z;
             if (!dungeon.isWall(nx, ep.z)) ep.x = nx;
             if (!dungeon.isWall(ep.x, nz)) ep.z = nz;
+            moved = ep.x !== beforeX || ep.z !== beforeZ;
             this.group.rotation.y = Math.atan2(ux, uz);
         }
+        this._setAction(moved ? 'walk' : 'idle');
     }
 
     _currentWaypointWorld(dungeon) {
@@ -153,22 +175,39 @@ export class Enemy {
     damage(amount) {
         if (!this.alive) return;
         this.hp -= amount;
-        const flash = this.body.material;
-        const orig = flash.color.getHex();
-        flash.color.setHex(0xffffff);
+        const flashId = ++this._flashId;
+        for (let i = 0; i < this._meshes.length; i++) {
+            const mat = this._meshes[i].material;
+            if (mat && mat.color) {
+                mat.color.setHex(0xffffff);
+            }
+        }
         setTimeout(() => {
-            if (this.alive) flash.color.setHex(orig);
-        }, 60);
+            if (!this.alive) return;
+            if (flashId !== this._flashId) return;
+            for (let i = 0; i < this._meshes.length; i++) {
+                const mat = this._meshes[i].material;
+                if (mat && mat.color) mat.color.setHex(this._origColors[i]);
+            }
+        }, 70);
         if (this.hp <= 0) this.kill();
     }
 
     kill() {
+        if (!this.alive) return;
         this.alive = false;
         this.audio?.playAt('death', this.group.position, 0.9);
+        this._setAction('death', 0.05);
+        const deathClip = this.actions.death?.getClip?.();
+        const deathDurationMs = deathClip ? deathClip.duration * 1000 : 800;
+        this._removeAt = performance.now() + Math.max(800, deathDurationMs);
+    }
+
+    cleanup() {
         this.scene.remove(this.group);
-        this.group.traverse((o) => {
-            o.geometry?.dispose?.();
-            o.material?.dispose?.();
+        this.mixer.stopAllAction();
+        this._meshes.forEach((m) => {
+            m.material?.dispose?.();
         });
     }
 }
@@ -180,7 +219,7 @@ export function spawnEnemiesInDungeon(scene, dungeon, audio = null, rng = Math.r
         const count = 1 + Math.floor(rng() * 2);
         for (let k = 0; k < count; k++) {
             const p = dungeon.randomFloorPointInRoom(room, rng);
-            enemies.push(new Enemy(scene, p, audio));
+            enemies.push(new Enemy(scene, p, audio, rng));
         }
     }
     return enemies;

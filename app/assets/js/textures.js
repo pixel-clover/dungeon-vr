@@ -19,7 +19,7 @@ export function makeFloorTexture(size = 256) {
     const ctx = c.getContext('2d');
     const r = rng(11);
 
-    ctx.fillStyle = '#2d2825';
+    ctx.fillStyle = '#5a4f44';
     ctx.fillRect(0, 0, size, size);
 
     const cells = 4;
@@ -30,8 +30,8 @@ export function makeFloorTexture(size = 256) {
             const oy = y * cellW + (r() - 0.5) * 4;
             const w = cellW - 2;
             const h = cellW - 2;
-            const shade = 50 + (r() * 30) | 0;
-            ctx.fillStyle = `rgb(${shade + 12},${shade + 6},${shade})`;
+            const shade = 110 + (r() * 40) | 0;
+            ctx.fillStyle = `rgb(${shade + 18},${shade + 8},${shade})`;
             ctx.fillRect(ox + 1, oy + 1, w, h);
             ctx.strokeStyle = 'rgba(0,0,0,0.55)';
             ctx.lineWidth = 2;
@@ -53,7 +53,7 @@ export function makeWallTexture(size = 256) {
     const ctx = c.getContext('2d');
     const r = rng(7);
 
-    ctx.fillStyle = '#22201c';
+    ctx.fillStyle = '#3a342c';
     ctx.fillRect(0, 0, size, size);
 
     const rows = 6;
@@ -64,8 +64,8 @@ export function makeWallTexture(size = 256) {
         for (let bx = -brickW; bx < size + brickW; bx += brickW) {
             const x = bx + offset;
             const y = row * brickH;
-            const shade = 90 + (r() * 30) | 0;
-            ctx.fillStyle = `rgb(${shade + 6},${shade - 2},${shade - 14})`;
+            const shade = 150 + (r() * 40) | 0;
+            ctx.fillStyle = `rgb(${shade + 10},${shade},${shade - 18})`;
             ctx.fillRect(x + 2, y + 2, brickW - 4, brickH - 4);
             ctx.strokeStyle = 'rgba(0,0,0,0.6)';
             ctx.lineWidth = 2;
@@ -91,13 +91,13 @@ export function makeCeilingTexture(size = 256) {
     const c = makeCanvas(size);
     const ctx = c.getContext('2d');
     const r = rng(31);
-    ctx.fillStyle = '#0f0e0c';
+    ctx.fillStyle = '#2a2622';
     ctx.fillRect(0, 0, size, size);
     for (let i = 0; i < 200; i++) {
         const x = r() * size;
         const y = r() * size;
-        const v = 14 + (r() * 18) | 0;
-        ctx.fillStyle = `rgb(${v},${v - 2},${v - 4})`;
+        const v = 60 + (r() * 30) | 0;
+        ctx.fillStyle = `rgb(${v},${v - 4},${v - 10})`;
         ctx.fillRect(x, y, 1 + (r() * 2) | 0, 1 + (r() * 2) | 0);
     }
     return canvasToRepeatTexture(c);

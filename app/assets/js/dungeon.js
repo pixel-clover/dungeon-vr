@@ -255,13 +255,13 @@ export class Dungeon {
         const tileGeo = new THREE.BoxGeometry(CELL, 0.2, CELL);
         const floorMat = new THREE.MeshStandardMaterial({
             map: tex.floor,
-            roughness: 0.95,
-            color: 0xb09080,
+            roughness: 0.9,
+            color: 0xffffff,
         });
         const ceilMat = new THREE.MeshStandardMaterial({
             map: tex.ceil,
             roughness: 1,
-            color: 0x444444,
+            color: 0x999999,
         });
         const floor = new THREE.InstancedMesh(tileGeo, floorMat, floorCount);
         const ceil = new THREE.InstancedMesh(tileGeo, ceilMat, floorCount);
@@ -271,7 +271,7 @@ export class Dungeon {
         const wallMat = new THREE.MeshStandardMaterial({
             map: tex.wall,
             roughness: 0.85,
-            color: 0xb0a090,
+            color: 0xffffff,
         });
         const walls = new THREE.InstancedMesh(wallGeo, wallMat, wallCount);
         walls.castShadow = true;

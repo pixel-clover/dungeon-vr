@@ -17,13 +17,13 @@ renderer.xr.enabled = true;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0a0e);
-scene.fog = new THREE.Fog(0x0a0a0e, 8, 28);
+scene.background = new THREE.Color(0x141218);
+scene.fog = new THREE.Fog(0x141218, 14, 45);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.05, 200);
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.25));
-const playerLight = new THREE.PointLight(0xffd9a0, 1.4, 12, 2);
+scene.add(new THREE.HemisphereLight(0xffd9a0, 0x202028, 0.55));
+const playerLight = new THREE.PointLight(0xffd9a0, 5.5, 22, 1);
 playerLight.position.set(0, 1.8, 0);
 scene.add(playerLight);
 

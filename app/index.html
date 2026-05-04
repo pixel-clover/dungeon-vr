@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0, user-scalable=no" name="viewport">
+    <title>Dungeon VR</title>
+    <link href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" rel="icon">
+    <link href="assets/css/styles.css" rel="stylesheet">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="hud">
+        <div id="hud-stats">
+            <span id="hp">HP: 100</span>
+            <span id="kills">Kills: 0 / 0</span>
+        </div>
+        <div id="hud-crosshair">+</div>
+        <div id="minimap-container"></div>
+    </div>
+
+    <div id="overlay">
+        <div id="overlay-card">
+            <h1 id="overlay-title">Dungeon VR</h1>
+            <p id="overlay-msg">Clear every enemy in the dungeon.</p>
+            <div id="overlay-buttons"></div>
+            <p class="hint">Desktop: click canvas to lock mouse, WASD to move, mouse to aim, click to shoot, R to restart.</p>
+            <p class="hint">VR: left stick to move, right stick to snap-turn, trigger to shoot.</p>
+        </div>
+    </div>
+
+    <script src="assets/js/main.js" type="module"></script>
+</body>
+</html>

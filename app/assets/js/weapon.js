@@ -1,8 +1,11 @@
 import * as THREE from 'three';
+import { spawnFloatingText } from './floatingtext.js';
 
 const FIRE_COOLDOWN = 0.18;
 const RAY_LENGTH = 60;
 const DAMAGE = 50;
+const HEADSHOT_THRESHOLD = 0.98;
+const HEADSHOT_MULT = 2;
 const TRACER_LIFETIME = 0.08;
 
 export class Weapon {
@@ -15,6 +18,16 @@ export class Weapon {
 
         this.lastFireTime = -999;
         this.tracers = [];
+
+        this.magSize = 12;
+        this.mag = 12;
+        this.maxReserveAmmo = 60;
+        this.reserveAmmo = 36;
+        this.reloadDuration = 1.4;
+        this.reloading = false;
+        this.reloadEndTime = 0;
+        this.lastEmptyClickTime = -999;
+        this._lastNow = 0;
 
         this.muzzleLight = new THREE.PointLight(0xffaa55, 0, 4, 2);
         scene.add(this.muzzleLight);
@@ -46,7 +59,33 @@ export class Weapon {
         controller.addEventListener('selectend', () => {
             this.controllerFireFlags[1] = false;
         });
+        controller.addEventListener('squeezestart', () => {
+            this.startReload(this._lastNow);
+        });
         this._rightController = controller;
+    }
+
+    startReload(now) {
+        if (this.reloading) return;
+        if (this.mag >= this.magSize) return;
+        if (this.reserveAmmo <= 0) return;
+        this.reloading = true;
+        this.reloadEndTime = now + this.reloadDuration;
+        this.audio?.playPlayer('reload', 0.7);
+    }
+
+    _completeReload() {
+        const needed = this.magSize - this.mag;
+        const transfer = Math.min(needed, this.reserveAmmo);
+        this.mag += transfer;
+        this.reserveAmmo -= transfer;
+        this.reloading = false;
+    }
+
+    refillFully() {
+        this.mag = this.magSize;
+        this.reserveAmmo = this.maxReserveAmmo;
+        this.reloading = false;
     }
 
     _buildGunMesh() {
@@ -141,6 +180,7 @@ export class Weapon {
     }
 
     update(dt, enemies, now) {
+        this._lastNow = now;
         const inXR = this.renderer.xr.isPresenting;
 
         let firing = false;
@@ -157,9 +197,24 @@ export class Weapon {
             this.player.headForward(dirVec);
         }
 
-        if (firing && now - this.lastFireTime >= FIRE_COOLDOWN) {
-            this._fire(originVec, dirVec, enemies, now);
-            this.lastFireTime = now;
+        if (this.reloading && now >= this.reloadEndTime) {
+            this._completeReload();
+        }
+
+        if (firing && now - this.lastFireTime >= FIRE_COOLDOWN && !this.reloading) {
+            if (this.mag > 0) {
+                this.mag--;
+                this._fire(originVec, dirVec, enemies, now);
+                this.lastFireTime = now;
+                if (this.mag === 0 && this.reserveAmmo > 0) {
+                    this.startReload(now);
+                }
+            } else if (now - this.lastEmptyClickTime > 0.25) {
+                this.audio?.playPlayer('emptyclick', 0.5);
+                this.lastEmptyClickTime = now;
+                this.lastFireTime = now;
+                if (this.reserveAmmo > 0) this.startReload(now);
+            }
         }
 
         for (let i = this.tracers.length - 1; i >= 0; i--) {
@@ -208,15 +263,25 @@ export class Weapon {
         this.audio?.playPlayer('shoot', 0.55, 0.95 + Math.random() * 0.1);
         this.player.pulseRight(0.4, 30);
 
-        if (bestEnemy) {
-            bestEnemy.damage(DAMAGE);
-            this.audio?.playAt('hit', bestEnemy.group.position, 0.9);
-            this.player.pulseRight(0.85, 60);
-        }
-
         const endX = origin.x + dir.x * bestT;
         const endY = origin.y + dir.y * bestT;
         const endZ = origin.z + dir.z * bestT;
+
+        if (bestEnemy) {
+            const hitY = endY - bestEnemy.group.position.y;
+            const isHeadshot = hitY > HEADSHOT_THRESHOLD;
+            const dmg = isHeadshot ? DAMAGE * HEADSHOT_MULT : DAMAGE;
+            bestEnemy.damage(dmg, { headshot: isHeadshot });
+            this.audio?.playAt('hit', bestEnemy.group.position, isHeadshot ? 1.1 : 0.9, isHeadshot ? 1.3 : 1);
+            this.player.pulseRight(isHeadshot ? 1.0 : 0.85, isHeadshot ? 90 : 60);
+            const textPos = new THREE.Vector3(endX, endY + 0.25, endZ);
+            if (isHeadshot) {
+                spawnFloatingText(this.scene, textPos, `CRIT ${dmg}`, { color: '#ff3030', scale: 0.7 });
+            } else {
+                spawnFloatingText(this.scene, textPos, `${dmg}`, { color: '#ffe060', scale: 0.5 });
+            }
+        }
+
         this._spawnTracer(origin.x, origin.y, origin.z, endX, endY, endZ);
         this.muzzleFlashUntil = now + 0.06;
     }

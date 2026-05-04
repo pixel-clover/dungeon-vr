@@ -39,8 +39,11 @@ export class Explosion {
         this.smoke.position.copy(position);
         scene.add(this.smoke);
 
-        this.light = new THREE.PointLight(0xff8030, 35, 9, 1.4);
+        const lightIntensity = options.lightIntensity ?? 35;
+        const lightRange = options.lightRange ?? 9;
+        this.light = new THREE.PointLight(0xff8030, lightIntensity, lightRange, 1.4);
         this.light.position.copy(position);
+        this._lightBaseIntensity = lightIntensity;
         scene.add(this.light);
 
         this.shards = [];
@@ -90,7 +93,7 @@ export class Explosion {
         this.smoke.scale.setScalar(0.4 + grow * 6);
         this.smokeMat.opacity = Math.min(0.55, t * 0.9) * Math.max(0, 1 - (t - 0.6) * 2.5);
 
-        this.light.intensity = 35 * Math.max(0, 1 - t * t * 1.6);
+        this.light.intensity = this._lightBaseIntensity * Math.max(0, 1 - t * t * 1.6);
 
         for (const s of this.shards) {
             s.vel.y -= 9.8 * dt;

@@ -44,14 +44,16 @@ function findClip(clips, names) {
     return null;
 }
 
-export function spawnEnemyModel(rng = Math.random) {
+export function spawnEnemyModel(rng = Math.random, opts = {}) {
     const names = Array.from(cache.keys());
     if (names.length === 0) throw new Error('Enemy models not preloaded');
-    const name = names[Math.floor(rng() * names.length)];
+    const name = opts.forceName || names[Math.floor(rng() * names.length)];
     const entry = cache.get(name);
+    if (!entry) throw new Error(`Enemy model ${name} not loaded`);
 
+    const scaleMul = opts.scaleMul ?? 1;
     const object = skeletonClone(entry.gltf.scene);
-    object.scale.setScalar(entry.def.scale);
+    object.scale.setScalar(entry.def.scale * scaleMul);
     object.position.y = entry.def.yOffset;
     object.rotation.y = entry.def.yawOffset || 0;
 

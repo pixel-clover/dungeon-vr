@@ -13,11 +13,15 @@ const WAYPOINT_REACHED = 0.35;
 const FADE = 0.18;
 
 export class Enemy {
-    constructor(scene, position, audio = null, rng = Math.random) {
+    constructor(scene, position, audio = null, rng = Math.random, opts = {}) {
         this.scene = scene;
         this.audio = audio;
         this.alive = true;
-        this.hp = ENEMY_HP;
+        this.isBoss = !!opts.isBoss;
+        this.hp = opts.hp ?? ENEMY_HP;
+        this.maxHp = this.hp;
+        this.contactDamage = opts.contactDamage ?? CONTACT_DAMAGE;
+        this.roomIdx = opts.roomIdx ?? -1;
         this.lastAttackTime = -999;
         this.spotted = false;
         this._flashId = 0;
@@ -26,7 +30,10 @@ export class Enemy {
         this.pathIdx = 0;
         this.nextRepathTime = rng() * REPATH_INTERVAL;
 
-        const spawned = spawnEnemyModel(rng);
+        const spawned = spawnEnemyModel(rng, {
+            forceName: opts.modelName,
+            scaleMul: opts.scaleMul ?? 1,
+        });
         this.modelName = spawned.name;
         this.model = spawned.object;
         this.mixer = spawned.mixer;
@@ -83,8 +90,8 @@ export class Enemy {
 
         if (distAll <= CONTACT_RANGE) {
             if (now - this.lastAttackTime > 0.8) {
-                player.damage(CONTACT_DAMAGE, now);
-                this.audio?.playAt('attack', ep, 0.9);
+                player.damage(this.contactDamage, now);
+                this.audio?.playAt('attack', ep, this.isBoss ? 1.1 : 0.9);
                 this.lastAttackTime = now;
             }
             this.group.rotation.y = Math.atan2(dxAll, dzAll);
@@ -172,9 +179,10 @@ export class Enemy {
         return null;
     }
 
-    damage(amount) {
+    damage(amount, info = null) {
         if (!this.alive) return;
         this.hp -= amount;
+        if (info?.headshot) this._lastHitWasHeadshot = true;
         const flashId = ++this._flashId;
         for (let i = 0; i < this._meshes.length; i++) {
             const mat = this._meshes[i].material;
@@ -212,15 +220,63 @@ export class Enemy {
     }
 }
 
-export function spawnEnemiesInDungeon(scene, dungeon, audio = null, rng = Math.random) {
+function findFarthestRoomIdx(rooms) {
+    if (rooms.length < 2) return -1;
+    const start = rooms[0];
+    let farIdx = 1;
+    let farD2 = 0;
+    for (let i = 1; i < rooms.length; i++) {
+        const dx = rooms[i].cx - start.cx;
+        const dy = rooms[i].cy - start.cy;
+        const d2 = dx * dx + dy * dy;
+        if (d2 > farD2) { farD2 = d2; farIdx = i; }
+    }
+    return farIdx;
+}
+
+export function spawnEnemiesInDungeon(scene, dungeon, audio = null, rng = Math.random, opts = {}) {
     const enemies = [];
+    const hpMult = opts.difficulty ?? 1.0;
+    const dmgMult = opts.damageMult ?? 1.0;
+    const countMult = opts.countMult ?? 1.0;
+    const bossRoomIdx = findFarthestRoomIdx(dungeon.rooms);
+
     for (let i = 1; i < dungeon.rooms.length; i++) {
         const room = dungeon.rooms[i];
-        const count = 1 + Math.floor(rng() * 2);
+        if (i === bossRoomIdx) {
+            const p = dungeon.randomFloorPointInRoom(room, rng);
+            enemies.push(new Enemy(scene, p, audio, rng, {
+                isBoss: true,
+                modelName: 'demon',
+                scaleMul: 1.7,
+                hp: 400 * hpMult,
+                contactDamage: 25 * dmgMult,
+                roomIdx: i,
+            }));
+            continue;
+        }
+        const count = 1 + Math.floor(rng() * 2 * countMult);
         for (let k = 0; k < count; k++) {
             const p = dungeon.randomFloorPointInRoom(room, rng);
-            enemies.push(new Enemy(scene, p, audio, rng));
+            enemies.push(new Enemy(scene, p, audio, rng, {
+                hp: ENEMY_HP * hpMult,
+                contactDamage: CONTACT_DAMAGE * dmgMult,
+                roomIdx: i,
+            }));
         }
     }
     return enemies;
+}
+
+export function spawnWaveEnemy(scene, dungeon, audio, rng, roomIdx, opts = {}) {
+    const room = dungeon.rooms[roomIdx];
+    if (!room) return null;
+    const p = dungeon.randomFloorPointInRoom(room, rng);
+    const hpMult = opts.hpMult ?? 1.0;
+    const dmgMult = opts.dmgMult ?? 1.0;
+    return new Enemy(scene, p, audio, rng, {
+        hp: ENEMY_HP * hpMult,
+        contactDamage: CONTACT_DAMAGE * dmgMult,
+        roomIdx,
+    });
 }

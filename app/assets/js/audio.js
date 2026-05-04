@@ -74,6 +74,25 @@ export class AudioSystem {
             return Math.sin(2 * Math.PI * f * t) * env * 0.8;
         });
 
+        this.buffers.pickup = this._synth(0.35, (t) => {
+            const env = Math.exp(-t * 6);
+            const f = 600 + t * 800;
+            return Math.sin(2 * Math.PI * f * t) * env * 0.7;
+        });
+
+        this.buffers.emptyclick = this._synth(0.05, (t) => {
+            const env = Math.exp(-t * 80);
+            const noise = (Math.random() * 2 - 1);
+            return noise * env * 0.5;
+        });
+
+        this.buffers.reload = this._synth(0.4, (t) => {
+            const click1 = Math.exp(-Math.abs(t - 0.05) * 60) * (Math.random() * 2 - 1) * 0.7;
+            const click2 = Math.exp(-Math.abs(t - 0.25) * 70) * (Math.random() * 2 - 1) * 0.6;
+            const click3 = Math.exp(-Math.abs(t - 0.35) * 80) * (Math.random() * 2 - 1) * 0.55;
+            return click1 + click2 + click3;
+        });
+
         this.buffers.growl = this._synth(0.5, (t) => {
             const env = Math.sin(Math.PI * t / 0.5);
             const f = 70 + Math.sin(t * 18) * 12;

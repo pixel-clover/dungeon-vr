@@ -10,6 +10,7 @@ const DEFAULTS = {
     comfortVignette: true,
     moveSmoothing: 22,
     theme: 'castle',
+    difficulty: 'normal',
 };
 
 export class Settings {
@@ -74,6 +75,7 @@ export class Settings {
         const invertEl = document.getElementById('setting-invert-vr-forward');
         const comfortEl = document.getElementById('setting-comfort-vignette');
         const themeEl = document.getElementById('setting-theme');
+        const difficultyEl = document.getElementById('setting-difficulty');
 
         volumeEl.value = this.values.volume;
         volumeValueEl.textContent = `${this.values.volume}%`;
@@ -88,6 +90,7 @@ export class Settings {
         invertEl.checked = !!this.values.invertVrForward;
         comfortEl.checked = !!this.values.comfortVignette;
         themeEl.value = this.values.theme;
+        difficultyEl.value = this.values.difficulty;
 
         volumeEl.addEventListener('input', () => {
             const v = parseInt(volumeEl.value, 10);
@@ -123,6 +126,9 @@ export class Settings {
         });
         themeEl.addEventListener('change', () => {
             this.set('theme', themeEl.value);
+        });
+        difficultyEl.addEventListener('change', () => {
+            this.set('difficulty', difficultyEl.value);
         });
 
         closeBtn.addEventListener('click', () => this.close());

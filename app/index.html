@@ -24,6 +24,7 @@
 <body>
     <div id="damage-vignette"></div>
     <div id="low-hp-vignette"></div>
+    <div id="countdown" class="hidden"></div>
 
     <div id="hud">
         <div id="hud-top-left">
@@ -36,6 +37,14 @@
                 <div class="hud-label">KILLS</div>
                 <div class="bar"><div class="bar-fill bar-kills" id="kills-fill"></div></div>
                 <div class="hud-value" id="kills-value">0 / 0</div>
+            </div>
+            <div class="hud-stat hud-stat-time">
+                <div class="hud-label">TIME</div>
+                <div class="hud-value-large" id="time-value">0:00</div>
+            </div>
+            <div class="hud-stat hud-stat-time">
+                <div class="hud-label">AMMO</div>
+                <div class="hud-value-large" id="ammo-value">12 / 36</div>
             </div>
         </div>
         <div id="hud-crosshair">
@@ -65,6 +74,14 @@
                     <option value="frostvault">Frostvault</option>
                     <option value="dukebase">Duke Base</option>
                     <option value="tomb">Tomb</option>
+                </select>
+            </div>
+            <div class="settings-row">
+                <label for="setting-difficulty">Difficulty</label>
+                <select id="setting-difficulty">
+                    <option value="easy">Easy</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="hard">Hard</option>
                 </select>
             </div>
             <div class="settings-row">
